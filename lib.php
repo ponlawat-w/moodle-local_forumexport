@@ -18,8 +18,13 @@ function local_forumexport_extend_navigation() {
     }
 
     if (has_capability('mod/forum:exportforum', $context)) {
-        $forumid = $context->instanceid;
-        $url = new moodle_url('/local/forumexport/export.php', ['id' => $forumid]);
+        $vaultfactory = mod_forum\local\container::get_vault_factory();
+        $legacydatamapperfactory = mod_forum\local\container::get_legacy_data_mapper_factory();
+        $forumvault = $vaultfactory->get_forum_vault();
+        $forumentity = $forumvault->get_from_id($PAGE->cm->instance);
+        $forumobject = $legacydatamapperfactory->get_forum_data_mapper()->to_legacy_object($forumentity);    
+
+        $url = new moodle_url('/local/forumexport/export.php', ['id' => $forumobject->id]);
         $PAGE->requires->string_for_js('export_extendedfunctionalities', 'local_forumexport');
         $PAGE->requires->js_call_amd('local_forumexport/injector', 'init', [$url->out()]);
     }
