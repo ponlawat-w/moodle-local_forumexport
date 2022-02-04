@@ -119,7 +119,7 @@ if ($form->is_cancelled()) {
 
     $havegroupmode = $data->groupmode != LOCAL_FORUMEXPORT_GROUP_ALL;
     $includeallreplies = isset($data->includeallreplies) && $data->includeallreplies ? true : false;
-    $useridsingroups = $havegroupmode ? local_forumexport_getuseridsfromgroupids($groupids) : [];
+    $useridsingroups = $havegroupmode && !$includeallreplies ? local_forumexport_getuseridsfromgroupids($groupids) : [];
 
     $filename = clean_filename('discussion');
     \core\dataformat::download_data(

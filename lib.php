@@ -36,25 +36,25 @@ function local_forumexport_filterdiscussionidsbygroups($discussionids, $groupids
         return [];
     }
 
+    $groupmemberids = local_forumexport_getuseridsfromgroupids($groupids);
+
     list($indiscussionsql, $discussionparams) = $DB->get_in_or_equal($discussionids, SQL_PARAMS_NAMED);
-    list($ingroupsql, $groupparams) = $DB->get_in_or_equal($groupids, SQL_PARAMS_NAMED);
+    list($inusersql, $userparams) = $DB->get_in_or_equal($groupmemberids, SQL_PARAMS_NAMED);
 
-    $params = array_merge($discussionparams, $groupparams);
+    $params = array_merge($discussionparams, $userparams);
 
-    $discussionidrecords = $DB->get_records_sql('SELECT id FROM {forum_discussions} WHERE id ' . $indiscussionsql . ' AND groupid ' . $ingroupsql, $params);
+    $discussionidrecords = $DB->get_records_sql('SELECT id FROM {forum_discussions} WHERE id ' . $indiscussionsql . ' AND userid ' . $inusersql, $params);
 
     return array_map(function($dicussion) { return $dicussion->id; }, $discussionidrecords);
 }
 
 function local_forumexport_getuseridsfromgroupids($groupids) {
     global $DB;
-    if (!$groupids || empty($groupids)) {
-        return [];
+
+    $groupmemberids = [];
+    foreach ($groupids as $groupid) {
+        $groupmemberids += array_map(function ($user) { return $user->id; }, groups_get_members($groupid));
     }
 
-    list($ingroupsql, $params) = $DB->get_in_or_equal($groupids, SQL_PARAMS_NAMED);
-
-    $groupmemberuserids = $DB->get_records_sql('SELECT userid FROM {groups_members} WHERE groupid ' . $ingroupsql, $params);
-
-    return array_map(function($record) { return $record->userid; }, $groupmemberuserids);
+    return $groupmemberids;
 }
