@@ -49,8 +49,6 @@ function local_forumexport_filterdiscussionidsbygroups($discussionids, $groupids
 }
 
 function local_forumexport_getuseridsfromgroupids($groupids) {
-    global $DB;
-
     $groupmemberids = [];
     foreach ($groupids as $groupid) {
         $groupmemberids += array_map(function ($user) { return $user->id; }, groups_get_members($groupid));
