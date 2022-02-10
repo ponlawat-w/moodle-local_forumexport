@@ -6,14 +6,15 @@ const LOCAL_FORUMEXPORT_GROUP_ALL = 0;
 const LOCAL_FORUMEXPORT_GROUP_MY = 1;
 const LOCAL_FORUMEXPORT_GROUP_CUSTOM = 2;
 
-function local_forumexport_extend_navigation() {
+function local_forumexport_extend_settings_navigation($settingsnav, $context) {
     global $PAGE;
     $context = $PAGE->context;
     if (!($context instanceof context_module)) {
         return;
     }
-    $path = $PAGE->url->get_path();
-    if (!preg_match('/\/mod\/forum\/view.php/i', $path)) {
+
+    $cm = get_coursemodule_from_id('forum', $context->instanceid);
+    if (!$cm) {
         return;
     }
 
@@ -24,9 +25,12 @@ function local_forumexport_extend_navigation() {
         $forumentity = $forumvault->get_from_id($PAGE->cm->instance);
         $forumobject = $legacydatamapperfactory->get_forum_data_mapper()->to_legacy_object($forumentity);    
 
-        $url = new moodle_url('/local/forumexport/export.php', ['id' => $forumobject->id]);
-        $PAGE->requires->string_for_js('export_extendedfunctionalities', 'local_forumexport');
-        $PAGE->requires->js_call_amd('local_forumexport/injector', 'init', [$url->out()]);
+        $modulesettings = $settingsnav->find('modulesettings', null);
+        if ($modulesettings) {
+            $url = new moodle_url('/local/forumexport/export.php', ['id' => $forumobject->id]);
+            $node = $modulesettings->create(get_string('export_extendedfunctionalities', 'local_forumexport'), $url, navigation_node::NODETYPE_LEAF, null, 'export_extendedfunctionalities');
+            $modulesettings->add_node($node);
+        }
     }
 }
 
