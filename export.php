@@ -40,9 +40,6 @@ if (empty($forum)) {
 }
 
 $capabilitymanager = $managerfactory->get_capability_manager($forum);
-if (!$capabilitymanager->can_export_forum($USER)) {
-    throw new moodle_exception('cannotexportforum', 'forum');
-}
 
 $course = $forum->get_course_record();
 $coursemodule = $forum->get_course_module_record();
@@ -53,6 +50,8 @@ require_course_login($course, true, $cm);
 $url = new moodle_url('/local/forumexport/export.php');
 $pagetitle = get_string('export', 'mod_forum');
 $context = $forum->get_context();
+
+require_capability('local/forumexport:exportforum', $context);
 
 $form = new \local_forumexport\form\extended_export_form($url->out(false), [
     'forum' => $forum,
@@ -78,16 +77,27 @@ if ($form->is_cancelled()) {
             return $discussion->get_id();
         }, $discussions);
     }
-    
-    if ($data->groupmode == LOCAL_FORUMEXPORT_GROUP_MY) {
+
+    $groupmode = isset($data->groupmode) ? $data->groupmode : LOCAL_FORUMEXPORT_GROUP_ALL;
+
+    $groupbydiscussiongroup = isset($data->groupbydiscussiongroup) ? $data->groupbydiscussiongroup : false;
+    $groupbydiscussionstarter = isset($data->groupbydiscussionstarter) ? $data->groupbydiscussionstarter : false;
+    $groupbyparticipants = isset($data->groupbyparticipants) ? $data->groupbyparticipants : false;
+
+    if ($groupmode == LOCAL_FORUMEXPORT_GROUP_ALL) {
+        require_capability('local/forumexport:exportdifferentgroup', $context);
+        $groupids = null;
+    } else if ($groupmode == LOCAL_FORUMEXPORT_GROUP_MY) {
         $mygroups = groups_get_all_groups($course->id, $USER->id);
         $groupids = array_map(function($group) { return $group->id; }, $mygroups);
-        $discussionids = local_forumexport_filterdiscussionidsbygroups($discussionids, $groupids);
-    } else if ($data->groupmode == LOCAL_FORUMEXPORT_GROUP_CUSTOM) {
+        local_forumexport_checkexportablegroups($context, $course->id, $groupids);
+
+        $discussionids = local_forumexport_filterdiscussionidsbygroups($discussionids, $groupids, $groupbydiscussiongroup, $groupbydiscussionstarter, $groupbyparticipants);
+    } else if ($groupmode == LOCAL_FORUMEXPORT_GROUP_CUSTOM) {
         $groupids = $data->groups;
-        $discussionids = local_forumexport_filterdiscussionidsbygroups($discussionids, $groupids);
-    } else {
-        $groupids = null;
+        local_forumexport_checkexportablegroups($context, $course->id, $groupids);
+
+        $discussionids = local_forumexport_filterdiscussionidsbygroups($discussionids, $groupids, $groupbydiscussiongroup, $groupbydiscussionstarter, $groupbyparticipants);
     }
 
     $filters = ['discussionids' => $discussionids];
@@ -117,8 +127,17 @@ if ($form->is_cancelled()) {
     $exportdata = new ArrayObject($datamapper->to_legacy_objects($posts));
     $iterator = $exportdata->getIterator();
 
-    $havegroupmode = $data->groupmode != LOCAL_FORUMEXPORT_GROUP_ALL;
+    $havegroupmode = $groupmode != LOCAL_FORUMEXPORT_GROUP_ALL;
     $includeallreplies = isset($data->includeallreplies) && $data->includeallreplies ? true : false;
+    $includeparent = isset($data->includeparent) && $data->includeparent ? true: false;
+
+    if ($includeallreplies) {
+        require_capability('local/forumexport:includereplies', $context);
+    }
+    if ($includeparent) {
+        require_capability('local/forumexport:includeparent', $context);
+    }
+    
     $useridsingroups = $havegroupmode && !$includeallreplies ? local_forumexport_getuseridsfromgroupids($groupids) : [];
 
     $filename = clean_filename('discussion');
@@ -127,11 +146,19 @@ if ($form->is_cancelled()) {
         $dataformat,
         $fields,
         $iterator,
-        function($exportdata) use ($fields, $striphtml, $humandates, $canviewfullname, $context, $havegroupmode, $includeallreplies, $useridsingroups) {
+        function($exportdata) use (
+            $fields, $striphtml, $humandates, $canviewfullname, $context,
+            $havegroupmode, $includeallreplies, $includeparent, $useridsingroups
+        ) {
             $data = new stdClass();
 
-            if ($havegroupmode && !$includeallreplies && !in_array($exportdata->userid, $useridsingroups)) {
-                return null;
+            if ($havegroupmode) {
+                if (!$includeallreplies && $exportdata->parent != 0 && !in_array($exportdata->userid, $useridsingroups)) {
+                    return null;
+                }
+                if (!$includeparent && $exportdata->parent == 0 && !in_array($exportdata->userid, $useridsingroups)) {
+                    return null;
+                }
             }
 
             foreach ($fields as $field) {
