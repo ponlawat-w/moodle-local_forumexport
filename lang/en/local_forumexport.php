@@ -15,7 +15,7 @@
 // along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
 
 /**
- * Capability definitions
+ * English strings
  * 
  * @package local_forumexport
  * @copyright 2022 Ponlawat Weerapanpisit
