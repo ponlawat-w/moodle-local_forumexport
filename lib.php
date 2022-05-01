@@ -1,4 +1,26 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
+/**
+ * Function libraries
+ * 
+ * @package local_forumexport
+ * @copyright 2022 Ponlawat Weerapanpisit
+ * @license https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 
 defined('MOODLE_INTERNAL') or die();
 
@@ -6,6 +28,13 @@ const LOCAL_FORUMEXPORT_GROUP_ALL = 0;
 const LOCAL_FORUMEXPORT_GROUP_MY = 1;
 const LOCAL_FORUMEXPORT_GROUP_CUSTOM = 2;
 
+/**
+ * Extended forum module settings navigation by adding a button to access the plugin
+ *
+ * @param mixed $settingsnav
+ * @param mixed $context
+ * @return void
+ */
 function local_forumexport_extend_settings_navigation($settingsnav, $context) {
     global $PAGE;
     $context = $PAGE->context;
@@ -34,6 +63,15 @@ function local_forumexport_extend_settings_navigation($settingsnav, $context) {
     }
 }
 
+/**
+ * Check if a user can export data from specified group, otherwise exception to be thrown from require_capability
+ *
+ * @param context_module $modulecontext
+ * @param int $courseid
+ * @param int[] $groupids
+ * @param int $userid
+ * @return void
+ */
 function local_forumexport_checkexportablegroups($modulecontext, $courseid, $groupids, $userid = 0) {
     global $USER;
 
@@ -53,6 +91,13 @@ function local_forumexport_checkexportablegroups($modulecontext, $courseid, $gro
     }
 }
 
+/**
+ * Get IDs of the dicussions started by a user from one of any specified groups
+ *
+ * @param int[] $discussionids
+ * @param int[] $groupids
+ * @return int[]
+ */
 function local_forumexport_getdiscussionidsstartedbygroups($discussionids, $groupids) {
     global $DB;
 
@@ -68,6 +113,13 @@ function local_forumexport_getdiscussionidsstartedbygroups($discussionids, $grou
     return array_values(array_map(function($dicussion) { return $dicussion->id; }, $discussionidrecords));
 }
 
+/**
+ * Get IDs of the dicussions which belong to one of any specified groups
+ *
+ * @param int[] $discussionids
+ * @param int[] $groupids
+ * @return int[]
+ */
 function local_forumexport_getdiscussionidsingroups($discussionids, $groupids) {
     global $DB;
 
@@ -81,6 +133,13 @@ function local_forumexport_getdiscussionidsingroups($discussionids, $groupids) {
     return array_values(array_map(function($discussion) { return $discussion->id; }, $discussionidrecords));
 }
 
+/**
+ * Get IDs of the discussions which are participated by user from one of any specified groups
+ *
+ * @param int[] $discussionids
+ * @param int[] $groupids
+ * @return int[]
+ */
 function local_forumexport_getdiscussionidsparticipatedbygroups($discussionids, $groupids) {
     global $DB;
 
@@ -96,6 +155,16 @@ function local_forumexport_getdiscussionidsparticipatedbygroups($discussionids, 
     return array_values(array_map(function($post) { return $post->discussion; }, $postdiscussionrecords));
 }
 
+/**
+ * Filter discussion IDs array by specified group IDs
+ *
+ * @param int[] $discussionids
+ * @param int[] $groupids
+ * @param bool $groupbydiscussiongroup True to include discussions that belong to any of the specified groups
+ * @param bool $groupbydiscussionstarter True to include dicussions that are started by a user from any of the specified groups
+ * @param bool $groupbyparticipants True to include dicussions that are participated by a user from any of the specified groups
+ * @return int[]
+ */
 function local_forumexport_filterdiscussionidsbygroups($discussionids, $groupids, $groupbydiscussiongroup, $groupbydiscussionstarter, $groupbyparticipants) {
     if (empty($discussionids) || empty($groupids)) {
         return [];
@@ -108,6 +177,12 @@ function local_forumexport_filterdiscussionidsbygroups($discussionids, $groupids
     ));
 }
 
+/**
+ * Get IDs of the users who are members of any of the specified group IDs
+ *
+ * @param int[] $groupids
+ * @return int[]
+ */
 function local_forumexport_getuseridsfromgroupids($groupids) {
     $groupmemberids = [];
     foreach ($groupids as $groupid) {

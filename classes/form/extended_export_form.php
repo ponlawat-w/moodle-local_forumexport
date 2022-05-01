@@ -1,4 +1,19 @@
 <?php
+// This file is part of Moodle - https://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <https://www.gnu.org/licenses/>.
+
 namespace local_forumexport\form;
 
 defined('MOODLE_INTERNAL') or die();
@@ -6,7 +21,21 @@ defined('MOODLE_INTERNAL') or die();
 require_once(__DIR__ . '/../../lib.php');
 require_once($CFG->dirroot . '/mod/forum/classes/form/export_form.php');
 
+/**
+ * This class extends \mod_forum\form\export_form by keeping original form elements and adding extended elements needed.
+ * 
+ * @package local_forumexport
+ * @copyright 2022 Ponlawat Weerapanpisit
+ * @license https://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class extended_export_form extends \mod_forum\form\export_form {
+
+    /**
+     * Get array of all groups in the course of current frm.
+     *
+     * @param bool $all True to get all available groups in the courses, false to get only current user's groups.
+     * @return array Associative array with key being group ID and value being group name
+     */
     private function get_groups($all) {
         $courseid = $this->_customdata['courseid'];
         if ($all) {
@@ -28,6 +57,11 @@ class extended_export_form extends \mod_forum\form\export_form {
         return $results;
     }
 
+    /**
+     * Overridding parent's form definition by adding more necessary elements
+     *
+     * @return void
+     */
     public function definition() {
         parent::definition();
 
