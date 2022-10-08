@@ -267,7 +267,7 @@ function local_forumexport_calculateengagements($posts) {
  * @param string $text
  * @return object
  */
-function report_discussion_metrics_get_mulutimedia_num($text)
+function local_forumexport_report_discussion_metrics_get_mulutimedia_num($text)
 {
     global $CFG, $PAGE;
 

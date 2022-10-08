@@ -187,7 +187,7 @@ if ($form->is_cancelled()) {
                 }
             }
 
-            $multimediacount = report_discussion_metrics_get_mulutimedia_num($exportdata->message);
+            $multimediacount = local_forumexport_report_discussion_metrics_get_mulutimedia_num($exportdata->message);
 
             foreach ($fields as $field) {
                 // Set data field's value from the export data's equivalent field by default.
