@@ -142,13 +142,15 @@ if ($form->is_cancelled()) {
 
     $fields = ['id', 'discussion', 'parent', 'userid', 'userfullname', 'created', 'modified', 'mailed', 'subject', 'message',
                 'messageformat', 'messagetrust', 'attachment', 'totalscore', 'mailnow', 'deleted', 'privatereplyto',
-                'privatereplytofullname', 'wordcount', 'charcount'];
+                'privatereplytofullname', 'wordcount', 'charcount', 'depth', 'maxdepth', 'l1', 'l2', 'l3', 'l4up'];
 
     $canviewfullname = has_capability('moodle/site:viewfullnames', $context);
 
     $datamapper = $legacydatamapperfactory->get_post_data_mapper();
     $exportdata = new ArrayObject($datamapper->to_legacy_objects($posts));
     $iterator = $exportdata->getIterator();
+
+    $engagements = local_forumexport_calculateengagements($datamapper->to_legacy_objects($posts));
 
     $havegroupmode = $groupmode != LOCAL_FORUMEXPORT_GROUP_ALL;
     $includeallreplies = isset($data->includeallreplies) && $data->includeallreplies ? true : false;
@@ -171,7 +173,7 @@ if ($form->is_cancelled()) {
         $iterator,
         function($exportdata) use (
             $fields, $striphtml, $humandates, $canviewfullname, $context,
-            $havegroupmode, $includeallreplies, $includeparent, $useridsingroups
+            $havegroupmode, $includeallreplies, $includeparent, $useridsingroups, $engagements
         ) {
             $data = new stdClass();
 
@@ -191,16 +193,29 @@ if ($form->is_cancelled()) {
                 if ($field == 'userfullname') {
                     $user = \core_user::get_user($data->userid);
                     $data->userfullname = fullname($user, $canviewfullname);
-                }
-
-                if ($field == 'privatereplytofullname' && !empty($data->privatereplyto)) {
+                } else if ($field == 'privatereplytofullname' && !empty($data->privatereplyto)) {
                     $user = \core_user::get_user($data->privatereplyto);
                     $data->privatereplytofullname = fullname($user, $canviewfullname);
-                }
-
-                if ($field == 'message') {
+                } else if ($field == 'message') {
                     $data->message = file_rewrite_pluginfile_urls($data->message, 'pluginfile.php', $context->id, 'mod_forum',
                         'post', $data->id);
+                } else if ($field == 'depth') {
+                    $data->depth = $engagements[$data->id]->depth;
+                }
+                else if ($field == 'maxdepth') {
+                    $data->maxdepth = $engagements[$data->id]->maxdepth;
+                }
+                else if ($field == 'l1') {
+                    $data->l1 = $engagements[$data->id]->l1;
+                }
+                else if ($field == 'l2') {
+                    $data->l2 = $engagements[$data->id]->l2;
+                }
+                else if ($field == 'l3') {
+                    $data->l3 = $engagements[$data->id]->l3;
+                }
+                else if ($field == 'l4up') {
+                    $data->l4up = $engagements[$data->id]->l4up;
                 }
 
                 // Convert any boolean fields to their integer equivalent for output.

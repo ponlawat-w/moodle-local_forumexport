@@ -191,3 +191,72 @@ function local_forumexport_getuseridsfromgroupids($groupids) {
 
     return $groupmemberids;
 }
+
+/**
+ * Convert posts array to associative array with key being post ID and value being the post
+ *
+ * @param array $posts
+ * @return array
+ */
+function local_forumexport_getpostsdict($posts) {
+    $results = [];
+    foreach ($posts as $post) {
+        $results[$post->id] = $post;
+    }
+    return $results;
+}
+
+/**
+ * Get engagement values from posts array
+ *
+ * @param array $posts
+ * @return array
+ */
+function local_forumexport_calculateengagements($posts) {
+    $postsdict = local_forumexport_getpostsdict($posts);
+
+    $postsdepth = [];
+    $discussionsmaxdepth = [];
+    $discussionslevels = [];
+
+    foreach ($posts as $post) {
+        $depth = 0;
+        $currentpost = $post;
+        while ($parent = isset($postsdict[$currentpost->parent]) ? $postsdict[$currentpost->parent] : null) {
+            $depth++;
+            $currentpost = $parent;
+        }
+        $postsdepth[$post->id] = $depth;
+
+        if (!isset($discussionsmaxdepth[$post->discussion])) {
+            $discussionsmaxdepth[$post->discussion] = 0;
+        }
+        if (!isset($discussionslevels[$post->discussion])) {
+            $discussionslevels[$post->discussion] = [0, 0, 0, 0];
+        }
+
+        if ($depth > $discussionsmaxdepth[$post->discussion]) {
+            $discussionsmaxdepth[$post->discussion] = $depth;
+        }
+        if ($depth > 0 && $depth < 4) {
+            $discussionslevels[$post->discussion][$depth - 1]++;
+        } else if ($depth >= 4) {
+            $discussionslevels[$post->discussion][3]++;
+        }
+    }
+
+    $results = [];
+    foreach ($posts as $post) {
+        $record = new stdClass();
+        $record->depth = $postsdepth[$post->id];
+        $record->maxdepth = $post->parent ? null : $discussionsmaxdepth[$post->discussion];
+        $record->l1 = $post->parent ? null : $discussionslevels[$post->discussion][0];
+        $record->l2 = $post->parent ? null : $discussionslevels[$post->discussion][1];
+        $record->l3 = $post->parent ? null : $discussionslevels[$post->discussion][2];
+        $record->l4up = $post->parent ? null : $discussionslevels[$post->discussion][3];
+
+        $results[$post->id] = $record;
+    }
+
+    return $results;
+}
