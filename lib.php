@@ -191,3 +191,131 @@ function local_forumexport_getuseridsfromgroupids($groupids) {
 
     return $groupmemberids;
 }
+
+/**
+ * Convert posts array to associative array with key being post ID and value being the post
+ *
+ * @param array $posts
+ * @return array
+ */
+function local_forumexport_getpostsdict($posts) {
+    $results = [];
+    foreach ($posts as $post) {
+        $results[$post->id] = $post;
+    }
+    return $results;
+}
+
+/**
+ * Get engagement values from posts array
+ *
+ * @param array $posts
+ * @return array
+ */
+function local_forumexport_calculateengagements($posts) {
+    $postsdict = local_forumexport_getpostsdict($posts);
+
+    $postsdepth = [];
+    $discussionsmaxdepth = [];
+    $discussionslevels = [];
+
+    foreach ($posts as $post) {
+        $depth = 0;
+        $currentpost = $post;
+        while ($parent = isset($postsdict[$currentpost->parent]) ? $postsdict[$currentpost->parent] : null) {
+            $depth++;
+            $currentpost = $parent;
+        }
+        $postsdepth[$post->id] = $depth;
+
+        if (!isset($discussionsmaxdepth[$post->discussion])) {
+            $discussionsmaxdepth[$post->discussion] = 0;
+        }
+        if (!isset($discussionslevels[$post->discussion])) {
+            $discussionslevels[$post->discussion] = [0, 0, 0, 0];
+        }
+
+        if ($depth > $discussionsmaxdepth[$post->discussion]) {
+            $discussionsmaxdepth[$post->discussion] = $depth;
+        }
+        if ($depth > 0 && $depth < 4) {
+            $discussionslevels[$post->discussion][$depth - 1]++;
+        } else if ($depth >= 4) {
+            $discussionslevels[$post->discussion][3]++;
+        }
+    }
+
+    $results = [];
+    foreach ($posts as $post) {
+        $record = new stdClass();
+        $record->depth = $postsdepth[$post->id];
+        $record->maxdepth = $post->parent ? null : $discussionsmaxdepth[$post->discussion];
+        $record->l1 = $post->parent ? null : $discussionslevels[$post->discussion][0];
+        $record->l2 = $post->parent ? null : $discussionslevels[$post->discussion][1];
+        $record->l3 = $post->parent ? null : $discussionslevels[$post->discussion][2];
+        $record->l4up = $post->parent ? null : $discussionslevels[$post->discussion][3];
+
+        $results[$post->id] = $record;
+    }
+
+    return $results;
+}
+
+/**
+ * Count multimedia with methodologies from report_discussion_metrics plugin
+ *
+ * @param string $text
+ * @return object
+ */
+function report_discussion_metrics_get_mulutimedia_num($text)
+{
+    global $CFG, $PAGE;
+
+    if (!is_string($text) or empty($text)) {
+        // non string data can not be filtered anyway
+        return 0;
+    }
+
+    if (stripos($text, '</a>') === false && stripos($text, '</video>') === false && stripos($text, '</audio>') === false && (stripos($text, '<img') === false)) {
+        // Performance shortcut - if there are no </a>, </video> or </audio> tags, nothing can match.
+        return 0;
+    }
+
+    // Looking for tags.
+    $matches = preg_split('/(<[^>]*>)/i', $text, -1, PREG_SPLIT_NO_EMPTY | PREG_SPLIT_DELIM_CAPTURE);
+    $count = new stdClass;
+    $count->num = 0;
+    $count->img = 0;
+    $count->video = 0;
+    $count->audio = 0;
+    $count->link = 0;
+    if (!$matches) {
+        return 0;
+    } else {
+        // Regex to find media extensions in an <a> tag.
+        $embedmarkers = core_media_manager::instance()->get_embeddable_markers();
+        $re = '~<a\s[^>]*href="([^"]*(?:' .  $embedmarkers . ')[^"]*)"[^>]*>([^>]*)</a>~is';
+        $tagname = '';
+        foreach ($matches as $idx => $tag) {
+            if (preg_match('/<(a|img|video|audio)\s[^>]*/', $tag, $tagmatches)) {
+                $tagname = strtolower($tagmatches[1]);
+                if ($tagname === "a" && preg_match($re, $tag)) {
+                    $count->num++;
+                    $count->link++;
+                } else {
+                    if ($tagname == "img") {
+                        $count->img++;
+                        $count->num++;
+                    } else if ($tagname == "video") {
+                        $count->video++;
+                        $count->num++;
+                    } else if ($tagname == "audio") {
+                        $count->audio++;
+                        $count->num++;
+                    }
+                }
+            }
+        }
+    }
+    return $count;
+}
