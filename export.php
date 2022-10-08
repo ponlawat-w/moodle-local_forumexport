@@ -142,7 +142,8 @@ if ($form->is_cancelled()) {
 
     $fields = ['id', 'discussion', 'parent', 'userid', 'userfullname', 'created', 'modified', 'mailed', 'subject', 'message',
                 'messageformat', 'messagetrust', 'attachment', 'totalscore', 'mailnow', 'deleted', 'privatereplyto',
-                'privatereplytofullname', 'wordcount', 'charcount', 'depth', 'maxdepth', 'l1', 'l2', 'l3', 'l4up'];
+                'privatereplytofullname', 'wordcount', 'charcount', 'totalmultimediacount', 'imagecount', 'videocount', 'audiocount', 'linkcount',
+                'depth', 'maxdepth', 'l1', 'l2', 'l3', 'l4up'];
 
     $canviewfullname = has_capability('moodle/site:viewfullnames', $context);
 
@@ -186,6 +187,8 @@ if ($form->is_cancelled()) {
                 }
             }
 
+            $multimediacount = report_discussion_metrics_get_mulutimedia_num($exportdata->message);
+
             foreach ($fields as $field) {
                 // Set data field's value from the export data's equivalent field by default.
                 $data->$field = $exportdata->$field ?? null;
@@ -199,22 +202,27 @@ if ($form->is_cancelled()) {
                 } else if ($field == 'message') {
                     $data->message = file_rewrite_pluginfile_urls($data->message, 'pluginfile.php', $context->id, 'mod_forum',
                         'post', $data->id);
+                } else if ($field == 'totalmultimediacount') {
+                    $data->totalmultimediacount = $multimediacount ? $multimediacount->num : 0;
+                } else if ($field == 'imagecount') {
+                    $data->imagecount = $multimediacount ? $multimediacount->img : 0;
+                } else if ($field == 'videocount') {
+                    $data->videocount = $multimediacount ? $multimediacount->video : 0;
+                } else if ($field == 'audiocount') {
+                    $data->audiocount = $multimediacount ? $multimediacount->audio : 0;
+                } else if ($field == 'linkcount') {
+                    $data->linkcount = $multimediacount ? $multimediacount->link : 0;
                 } else if ($field == 'depth') {
                     $data->depth = $engagements[$data->id]->depth;
-                }
-                else if ($field == 'maxdepth') {
+                } else if ($field == 'maxdepth') {
                     $data->maxdepth = $engagements[$data->id]->maxdepth;
-                }
-                else if ($field == 'l1') {
+                } else if ($field == 'l1') {
                     $data->l1 = $engagements[$data->id]->l1;
-                }
-                else if ($field == 'l2') {
+                } else if ($field == 'l2') {
                     $data->l2 = $engagements[$data->id]->l2;
-                }
-                else if ($field == 'l3') {
+                } else if ($field == 'l3') {
                     $data->l3 = $engagements[$data->id]->l3;
-                }
-                else if ($field == 'l4up') {
+                } else if ($field == 'l4up') {
                     $data->l4up = $engagements[$data->id]->l4up;
                 }
 
