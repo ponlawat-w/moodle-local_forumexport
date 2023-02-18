@@ -86,6 +86,8 @@ if ($form->is_cancelled()) {
 } else if ($data = $form->get_data()) {
     $dataformat = $data->format;
 
+    $discussionmodcontextidlookup = local_forumexport_getdiscussionmodcontextidlookup($course->id);
+
     // This may take a very long time and extra memory.
     \core_php_time_limit::raise();
     raise_memory_limit(MEMORY_HUGE);
@@ -174,7 +176,8 @@ if ($form->is_cancelled()) {
         $iterator,
         function($exportdata) use (
             $fields, $striphtml, $humandates, $canviewfullname, $context,
-            $havegroupmode, $includeallreplies, $includeparent, $useridsingroups, $engagements
+            $havegroupmode, $includeallreplies, $includeparent, $useridsingroups, $engagements,
+            $discussionmodcontextidlookup
         ) {
             $data = new stdClass();
 
@@ -188,6 +191,7 @@ if ($form->is_cancelled()) {
             }
 
             $multimediacount = local_forumexport_report_discussion_metrics_get_mulutimedia_num($exportdata->message);
+            $multimediaattachments = local_forumexport_countattachmentmultimedia($discussionmodcontextidlookup[$exportdata->discussion], $exportdata->id);
 
             foreach ($fields as $field) {
                 // Set data field's value from the export data's equivalent field by default.
@@ -203,15 +207,15 @@ if ($form->is_cancelled()) {
                     $data->message = file_rewrite_pluginfile_urls($data->message, 'pluginfile.php', $context->id, 'mod_forum',
                         'post', $data->id);
                 } else if ($field == 'totalmultimediacount') {
-                    $data->totalmultimediacount = $multimediacount ? $multimediacount->num : 0;
+                    $data->totalmultimediacount = ($multimediacount ? $multimediacount->num : 0) + $multimediaattachments->num;
                 } else if ($field == 'imagecount') {
-                    $data->imagecount = $multimediacount ? $multimediacount->img : 0;
+                    $data->imagecount = ($multimediacount ? $multimediacount->img : 0) + $multimediaattachments->img;
                 } else if ($field == 'videocount') {
-                    $data->videocount = $multimediacount ? $multimediacount->video : 0;
+                    $data->videocount = ($multimediacount ? $multimediacount->video : 0) + $multimediaattachments->video;
                 } else if ($field == 'audiocount') {
-                    $data->audiocount = $multimediacount ? $multimediacount->audio : 0;
+                    $data->audiocount = ($multimediacount ? $multimediacount->audio : 0) + $multimediaattachments->audio;
                 } else if ($field == 'linkcount') {
-                    $data->linkcount = $multimediacount ? $multimediacount->link : 0;
+                    $data->linkcount = ($multimediacount ? $multimediacount->link : 0) + $multimediaattachments->link;
                 } else if ($field == 'depth') {
                     $data->depth = $engagements[$data->id]->depth;
                 } else if ($field == 'maxdepth') {
