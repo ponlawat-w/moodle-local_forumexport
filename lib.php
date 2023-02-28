@@ -325,7 +325,7 @@ function local_forumexport_getdiscussionmodcontextidlookup($courseid) {
     $forumlookup = [];
     $forums = $DB->get_records('forum', ['course' => $courseid]);
     foreach ($forums as $forum) {
-        $cm = get_coursemodule_from_id('forum', $forum->id, $courseid, false, MUST_EXIST);
+        $cm = get_coursemodule_from_instance('forum', $forum->id, $courseid, false, MUST_EXIST);
         $forumlookup[$forum->id] = context_module::instance($cm->id);
     }
     $results = [];
