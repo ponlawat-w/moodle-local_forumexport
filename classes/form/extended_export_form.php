@@ -20,6 +20,7 @@ defined('MOODLE_INTERNAL') or die();
 
 require_once(__DIR__ . '/../../lib.php');
 require_once($CFG->dirroot . '/mod/forum/classes/form/export_form.php');
+require_once(__DIR__ . '/../engagement.php');
 
 /**
  * This class extends \mod_forum\form\export_form by keeping original form elements and adding extended elements needed.
@@ -118,5 +119,12 @@ class extended_export_form extends \mod_forum\form\export_form {
             $mform->setDefault('includeallreplies', true);
             $mform->hideIf('includeallreplies', 'groupmode', 'eq', LOCAL_FORUMEXPORT_GROUP_ALL);
         }
+        
+        $mform->insertElementBefore(
+            $mform->createElement('select', 'engagementmethod', get_string('engagement_method', 'local_forumexport'), \local_forumexport\engagement::getselectoptions()),
+            'groupsheader'
+        );
+        $mform->addHelpButton('engagementmethod', 'engagement_method', 'local_forumexport');
+        $mform->setDefault('engagementmethod', get_config('local_forumexport', 'defaultengagementmethod'));
     }
 }

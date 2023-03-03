@@ -28,6 +28,7 @@ require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir . '/adminlib.php');
 require_once($CFG->dirroot . '/calendar/externallib.php');
 require_once(__DIR__ . '/classes/form/extended_export_form.php');
+require_once(__DIR__ . '/classes/engagement.php');
 
 $forumid = required_param('id', PARAM_INT);
 $userids = optional_param_array('userids', [], PARAM_INT);
@@ -144,16 +145,21 @@ if ($form->is_cancelled()) {
 
     $fields = ['id', 'discussion', 'parent', 'userid', 'userfullname', 'created', 'modified', 'mailed', 'subject', 'message',
                 'messageformat', 'messagetrust', 'attachment', 'totalscore', 'mailnow', 'deleted', 'privatereplyto',
-                'privatereplytofullname', 'wordcount', 'charcount', 'totalmultimediacount', 'imagecount', 'videocount', 'audiocount', 'linkcount',
-                'depth', 'maxdepth', 'l1', 'l2', 'l3', 'l4up'];
+                'privatereplytofullname', 'wordcount', 'charcount', 'totalmultimediacount',
+                'imagecount', 'videocount', 'audiocount', 'linkcount', 'engagementlevel'];
 
     $canviewfullname = has_capability('moodle/site:viewfullnames', $context);
 
     $datamapper = $legacydatamapperfactory->get_post_data_mapper();
     $exportdata = new ArrayObject($datamapper->to_legacy_objects($posts));
     $iterator = $exportdata->getIterator();
-
-    $engagements = local_forumexport_calculateengagements($datamapper->to_legacy_objects($posts));
+    
+    $engagementcalculators = [];
+    foreach ($discussionids as $discussionid) {
+        $engagementcalculators[$discussionid] = \local_forumexport\engagement::getinstancefrommethod(
+            $data->engagementmethod, $discussionid, $fromtimestamp, $totimestamp
+        );
+    }
 
     $havegroupmode = $groupmode != LOCAL_FORUMEXPORT_GROUP_ALL;
     $includeallreplies = isset($data->includeallreplies) && $data->includeallreplies ? true : false;
@@ -176,8 +182,8 @@ if ($form->is_cancelled()) {
         $iterator,
         function($exportdata) use (
             $fields, $striphtml, $humandates, $canviewfullname, $context,
-            $havegroupmode, $includeallreplies, $includeparent, $useridsingroups, $engagements,
-            $discussionmodcontextidlookup
+            $havegroupmode, $includeallreplies, $includeparent, $useridsingroups,
+            $discussionmodcontextidlookup, $engagementcalculators
         ) {
             $data = new stdClass();
 
@@ -192,6 +198,8 @@ if ($form->is_cancelled()) {
 
             $multimediacount = local_forumexport_report_discussion_metrics_get_mulutimedia_num($exportdata->message);
             $multimediaattachments = local_forumexport_countattachmentmultimedia($discussionmodcontextidlookup[$exportdata->discussion], $exportdata->id);
+
+            $engagementresult = $engagementcalculators[$exportdata->discussion]->calculate($exportdata->userid);
 
             foreach ($fields as $field) {
                 // Set data field's value from the export data's equivalent field by default.
@@ -216,18 +224,8 @@ if ($form->is_cancelled()) {
                     $data->audiocount = ($multimediacount ? $multimediacount->audio : 0) + $multimediaattachments->audio;
                 } else if ($field == 'linkcount') {
                     $data->linkcount = ($multimediacount ? $multimediacount->link : 0) + $multimediaattachments->link;
-                } else if ($field == 'depth') {
-                    $data->depth = $engagements[$data->id]->depth;
-                } else if ($field == 'maxdepth') {
-                    $data->maxdepth = $engagements[$data->id]->maxdepth;
-                } else if ($field == 'l1') {
-                    $data->l1 = $engagements[$data->id]->l1;
-                } else if ($field == 'l2') {
-                    $data->l2 = $engagements[$data->id]->l2;
-                } else if ($field == 'l3') {
-                    $data->l3 = $engagements[$data->id]->l3;
-                } else if ($field == 'l4up') {
-                    $data->l4up = $engagements[$data->id]->l4up;
+                } else if ($field == 'engagementlevel') {
+                    $data->engagementlevel = $engagementresult->getpostlevel($exportdata->id);
                 }
 
                 // Convert any boolean fields to their integer equivalent for output.
